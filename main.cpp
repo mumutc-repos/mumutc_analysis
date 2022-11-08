@@ -3,6 +3,7 @@
 #include <string>
 
 #include "Isolation.h"
+#include "Pdg_check.h"
 
 #include "TFile.h"
 #include "TChain.h"
@@ -149,16 +150,30 @@ while(evt) {//start reading events
     mj[i] = 0.0;
   }
 
-  for(GenEvent::particle_const_iterator p = evt->particles_begin(); p != evt->particles_end(); ++p) {//loop all particles
+  //loop all particles
+  for(GenEvent::particle_const_iterator p = evt->particles_begin(); p != evt->particles_end(); ++p) {
     if((*p)->status()==1) {
       pvec[nparticles].SetPxPyPzE((*p)->momentum().px(), (*p)->momentum().py(), (*p)->momentum().pz(), (*p)->momentum().e());
       nparticles++;
     }
-  }//end of loop all particles
+  }
+  //end of looping all particles
 
-  for(GenEvent::particle_const_iterator p = evt->particles_begin(); p != evt->particles_end(); ++p) {//find isolated lepton and neutrino
+  //tag objects originated from b/c hadrons
+  std::set<int> bobjects = Find_all_objects(5, evt); 
+  std::set<int> cobjects = Find_all_objects(4, evt); 
+
+  class BC4FJ:public PseudoJet::UserInfoBase {
+    public: 
+      BC4FJ(int barcode): _barcode(barcode) {};
+      int _barcode;
+  };
+
+  //find isolated lepton and neutrino
+  for(GenEvent::particle_const_iterator p = evt->particles_begin(); p != evt->particles_end(); ++p) {
     if((*p)->status()==1) {
-      if((TMath::Abs((*p)->pdg_id())==11 || TMath::Abs((*p)->pdg_id())==13 || TMath::Abs((*p)->pdg_id())==15) && (*p)->momentum().perp()>20.0) { //find isolated leptons
+      //find isolated leptons
+      if((TMath::Abs((*p)->pdg_id())==11 || TMath::Abs((*p)->pdg_id())==13 || TMath::Abs((*p)->pdg_id())==15) && (*p)->momentum().perp()>20.0) { 
         plcan.SetPxPyPzE((*p)->momentum().px(), (*p)->momentum().py(), (*p)->momentum().pz(), (*p)->momentum().e());
         if(IsIsolated(plcan, pvec, nparticles)) {
           pl[nleptons] = plcan;
@@ -167,10 +182,15 @@ while(evt) {//start reading events
           nleptons++;
         }
         else {
-          particles.push_back(fastjet::PseudoJet((*p)->momentum().px(), (*p)->momentum().py(), (*p)->momentum().pz(), (*p)->momentum().e()));  //if a lepton is not isolated, add it to the particles list for running fastjet
+          //If a lepton is not isolated, add it to the particles list for running fastjet
+          particles.push_back(fastjet::PseudoJet((*p)->momentum().px(), (*p)->momentum().py(), (*p)->momentum().pz(), (*p)->momentum().e()));  
+          //record the barcode
+          BC4FJ* info = new BC4FJ((*p)->barcode());
+          particles.back().set_user_info(info);
         }
       }
-      else if((TMath::Abs((*p)->pdg_id())==12 || TMath::Abs((*p)->pdg_id())==14 || TMath::Abs((*p)->pdg_id())==16)) { //find neutrino
+      //find neutrino
+      else if((TMath::Abs((*p)->pdg_id())==12 || TMath::Abs((*p)->pdg_id())==14 || TMath::Abs((*p)->pdg_id())==16)) { 
         pnu[nnus].SetPxPyPzE((*p)->momentum().px(), (*p)->momentum().py(), (*p)->momentum().pz(), (*p)->momentum().e());
         ptnu[nnus] = pnu[nnus].Pt();
         enernu[nnus] = pnu[nnus].E();
@@ -178,10 +198,15 @@ while(evt) {//start reading events
         nnus++;
       }
       else {
-        particles.push_back(fastjet::PseudoJet((*p)->momentum().px(), (*p)->momentum().py(), (*p)->momentum().pz(), (*p)->momentum().e())); //remained particles are added to the list to run fastjet
+        //remained particles are added to the list to run fastjet
+        particles.push_back(fastjet::PseudoJet((*p)->momentum().px(), (*p)->momentum().py(), (*p)->momentum().pz(), (*p)->momentum().e())); 
+        //record the barcode
+        BC4FJ* info = new BC4FJ((*p)->barcode());
+        particles.back().set_user_info(info);
       }
     }
-  }//end of find isolated lepton and neutrion
+  }
+  //end of find isolated lepton and neutrion
 
   JetDefinition jet_def(ee_genkt_algorithm, R, 1);
   ClusterSequence cs_ee(particles, jet_def);
@@ -192,6 +217,25 @@ while(evt) {//start reading events
   //jets
   for(i=0; i<entries; i++) {
     if(jets_ee[i].e()>ecut) {
+      vector<PseudoJet> constituents = jets_ee[i].constituents();
+      bool is_b_jet = false;
+      bool is_c_jet = false;
+      for (j=0; j<constituents.size(); j++) {
+        assert(constituents[j].has_user_info());
+        int barcode = dynamic_cast<const BC4FJ*>(constituents[j].user_info_ptr())->_barcode;
+        if (bobjects.find(barcode) != bobjects.end()) {
+           is_b_jet = true;
+           is_c_jet = false;
+           break;
+        } 
+        if (cobjects.find(barcode) != cobjects.end()) {
+           is_b_jet = false;
+           is_c_jet = true;
+        }
+      }
+      if (is_b_jet) cout<<"Find a b-jet "<<i<<endl;
+      if (is_c_jet) cout<<"Find a c-jet "<<i<<endl;
+
       pj[njets].SetPxPyPzE(jets_ee[i].px(), jets_ee[i].py(), jets_ee[i].pz(), jets_ee[i].e());
       ptj[njets] = pj[i].Pt();
       enerj[njets] = pj[i].E();

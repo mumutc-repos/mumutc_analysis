@@ -22,7 +22,7 @@ bool Is_q_hadron(int pdg_id, int q) {
   return Is_q_meson(pdg_id, q) || Is_q_baryon(pdg_id, q);
 }
 
-std::set<int> Find_all_subjets(int q, GenEvent *evt) {
+std::set<int> Find_all_objects(int q, GenEvent *evt) {
   std::set<int> intermediate_state;
   std::set<int> final_state;
 
