@@ -103,7 +103,7 @@ string Estring;
 double R;
 double ecut;
 
-double brate = 0.07;
+double brate = 0.70;
 double crate = 0.10;
 double qrate = 0.01;
 
