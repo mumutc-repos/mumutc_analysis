@@ -28,7 +28,7 @@ std::set<int> Find_all_objects(int q, GenEvent *evt) {
 
   for (GenEvent::particle_const_iterator p = evt->particles_begin(); p != evt->particles_end(); ++p) {
     if (Is_q_hadron((*p)->pdg_id(), q)) {
-      cout<<"find: "<<q<<" hadron: "<<(*p)->pdg_id()<<endl;
+//      cout<<"find: "<<q<<" hadron: "<<(*p)->pdg_id()<<endl;
       std::vector<GenParticle*> pvec;
       pvec.push_back((*p));
       while(!pvec.empty()) {

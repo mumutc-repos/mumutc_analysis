@@ -17,8 +17,8 @@ CFLAGS=-I$(HEPMC2_INC) $(FASTJET_CFLAGS) $(ROOT_CFLAGS) -Wall
 LDFLAGS=-L$(HEPMC2_LIB) -Wl,-rpath $(HEPMC2_LIB) $(FASTJET_LDFLAGS) $(ROOT_LDFALGS)
 LIBS=-lHepMC $(ROOT_LIBS)
 
-SRC=main.cpp Isolation.cpp Pdg_check.cpp
-OBJ=main.o Isolation.o Pdg_check.o
+SRC=main.cpp Isolation.cpp Pdg_check.cpp Btag.cpp
+OBJ=main.o Isolation.o Pdg_check.o Btag.o
 
 all: $(SRC) $(OBJ) main
 

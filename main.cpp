@@ -4,6 +4,7 @@
 
 #include "Isolation.h"
 #include "Pdg_check.h"
+#include "Btag.h"
 
 #include "TFile.h"
 #include "TChain.h"
@@ -38,6 +39,8 @@ Int_t nparticles;
 
 Int_t nleptons;
 Int_t njets;
+Int_t nbjets;
+Int_t ncjets;
 Int_t nnus;
 
 Float_t ptj[999];
@@ -50,15 +53,23 @@ Float_t enernu[999];
 
 Float_t mj[999];
 
+Bool_t btag[999];
+Bool_t ctag[999];
+Bool_t tflag;
+
 Float_t mjj;
 Float_t mj1;
 Float_t mj2;
 Float_t met, me;
 
+Int_t hb;
+
 TFile *outputFile;
 outputFile = TFile::Open(argv[2], "RECREATE");
 TTree *tree = new TTree("eetc", "root file");
 tree -> Branch("njets", &njets, "njets/I");
+tree -> Branch("nbjets", &nbjets, "nbjets/I");
+tree -> Branch("ncjets", &ncjets, "ncjets/I");
 tree -> Branch("nleptons", &nleptons, "nleptons/I");
 tree -> Branch("nnus", &nnus, "nleptons/I");
 tree -> Branch("ptj1", &ptj[0], "ptj1/F");
@@ -80,6 +91,7 @@ tree -> Branch("mj1", &mj1, "mj1/F");
 tree -> Branch("mj2", &mj2, "mj2/F");
 tree -> Branch("met", &met, "met/F");
 tree -> Branch("me", &me, "me/F");
+tree -> Branch("hb", &hb, "hb/I");
 
 int i, j;
 int entries;
@@ -90,6 +102,10 @@ string Rstring;
 string Estring;
 double R;
 double ecut;
+
+double brate = 0.07;
+double crate = 0.10;
+double qrate = 0.01;
 
 Rstring = argv[3];
 ss1<<Rstring;
@@ -122,6 +138,8 @@ while(evt) {//start reading events
 
   nparticles = 0;
   njets = 0;
+  nbjets = 0;
+  ncjets = 0;
   nleptons = 0;
   nnus = 0;
   mjj = 0.0;
@@ -129,12 +147,15 @@ while(evt) {//start reading events
   mj2 = 0.0;
   met = 0.0;
   me = 0.0;
+  hb = 0;
 
   temp[0].SetPxPyPzE(0.0, 0.0, 0.0, 0.0);
   temp[1].SetPxPyPzE(0.0, 0.0, 0.0, 0.0);
   temp[2].SetPxPyPzE(0.0, 0.0, 0.0, 0.0);
   pnusum.SetPxPyPzE(0.0, 0.0, 0.0, 0.0);
   plcan.SetPxPyPzE(0.0, 0.0, 0.0, 0.0);
+
+  tflag = false;
 
   for(i=0; i<999; i++) {
     pvec[i].SetPxPyPzE(0.0, 0.0, 0.0, 0.0);
@@ -148,6 +169,8 @@ while(evt) {//start reading events
     enerl[i] = 0.0;
     enernu[i] = 0.0;
     mj[i] = 0.0;
+    btag[i] = false;
+    ctag[i] = false;
   }
 
   //loop all particles
@@ -233,8 +256,18 @@ while(evt) {//start reading events
            is_c_jet = true;
         }
       }
-      if (is_b_jet) cout<<"Find a b-jet "<<i<<endl;
-      if (is_c_jet) cout<<"Find a c-jet "<<i<<endl;
+      if (is_b_jet) {
+        btag[i] = true; 
+        ctag[i] = false;
+        nbjets++;
+//        cout<<"find b-jet: "<<i<<endl;
+      }
+      if (is_c_jet) { 
+        btag[i] = false;
+        ctag[i] = true;
+        ncjets++; 
+//        cout<<"find c-jet: "<<i<<endl;
+      }
 
       pj[njets].SetPxPyPzE(jets_ee[i].px(), jets_ee[i].py(), jets_ee[i].pz(), jets_ee[i].e());
       ptj[njets] = pj[i].Pt();
@@ -245,10 +278,20 @@ while(evt) {//start reading events
   }
 
   if(mj[1]>mj[0]) {
-    temp[0] = pj[0];
-    pj[0] = pj[1];
-    pj[1] = temp[0];
+    temp[0] = pj[0]; pj[0] = pj[1]; pj[1] = temp[0];
+    tflag = btag[0]; btag[0] = btag[1]; btag[1] = tflag;
+    tflag = ctag[0]; ctag[0] = ctag[1]; ctag[1] = tflag;
   }
+
+  if (btag[0] && Btag(brate)) hb=1; //cout<<"The heaviest jet is b-tagging jet. "<<endl;
+  else if (ctag[0] && Btag(crate)) hb=1; //cout<<"The heaviest jet is c-tagging jet. "<<endl;
+  else if (Btag(qrate)) hb=1;
+  else hb=0;
+
+//  cout<<"hb= "<<hb<<endl;
+
+//  if (btag[1] && Btag(brate)) cout<<"The sub-heaviest jet is b-tagging jet. "<<endl;
+//  if (ctag[1] && Btag(crate)) cout<<"The sub-heaviest jet is c-tagging jet. "<<endl;
 
   ptj[0] = pj[0].Pt();
   ptj[1] = pj[1].Pt();
