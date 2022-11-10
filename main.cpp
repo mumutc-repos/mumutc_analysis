@@ -63,6 +63,7 @@ Float_t mj2;
 Float_t met, me;
 
 Int_t hb;
+Int_t lb;
 
 TFile *outputFile;
 outputFile = TFile::Open(argv[2], "RECREATE");
@@ -92,6 +93,7 @@ tree -> Branch("mj2", &mj2, "mj2/F");
 tree -> Branch("met", &met, "met/F");
 tree -> Branch("me", &me, "me/F");
 tree -> Branch("hb", &hb, "hb/I");
+tree -> Branch("lb", &lb, "lb/I");
 
 int i, j;
 int entries;
@@ -147,7 +149,9 @@ while(evt) {//start reading events
   mj2 = 0.0;
   met = 0.0;
   me = 0.0;
+
   hb = 0;
+  lb = 0;
 
   temp[0].SetPxPyPzE(0.0, 0.0, 0.0, 0.0);
   temp[1].SetPxPyPzE(0.0, 0.0, 0.0, 0.0);
@@ -260,13 +264,11 @@ while(evt) {//start reading events
         btag[i] = true; 
         ctag[i] = false;
         nbjets++;
-//        cout<<"find b-jet: "<<i<<endl;
       }
       if (is_c_jet) { 
         btag[i] = false;
         ctag[i] = true;
         ncjets++; 
-//        cout<<"find c-jet: "<<i<<endl;
       }
 
       pj[njets].SetPxPyPzE(jets_ee[i].px(), jets_ee[i].py(), jets_ee[i].pz(), jets_ee[i].e());
@@ -283,15 +285,15 @@ while(evt) {//start reading events
     tflag = ctag[0]; ctag[0] = ctag[1]; ctag[1] = tflag;
   }
 
-  if (btag[0] && Btag(brate)) hb=1; //cout<<"The heaviest jet is b-tagging jet. "<<endl;
-  else if (ctag[0] && Btag(crate)) hb=1; //cout<<"The heaviest jet is c-tagging jet. "<<endl;
+  if (btag[0] && Btag(brate)) hb=1; 
+  else if (ctag[0] && Btag(crate)) hb=1; 
   else if (Btag(qrate)) hb=1;
   else hb=0;
 
-//  cout<<"hb= "<<hb<<endl;
-
-//  if (btag[1] && Btag(brate)) cout<<"The sub-heaviest jet is b-tagging jet. "<<endl;
-//  if (ctag[1] && Btag(crate)) cout<<"The sub-heaviest jet is c-tagging jet. "<<endl;
+  if (btag[1] && Btag(brate)) lb=1; 
+  else if (ctag[1] && Btag(crate)) lb=1; 
+  else if (Btag(qrate)) lb=1;
+  else lb=0;
 
   ptj[0] = pj[0].Pt();
   ptj[1] = pj[1].Pt();
@@ -341,6 +343,8 @@ while(evt) {//start reading events
   delete evt;
   ascii_in >> evt;
 }//end of reading events
+
+cout<<"Number of Events: "<<nEvents<<endl;
 
 tree->Write();
 outputFile->Close();
